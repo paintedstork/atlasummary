@@ -225,7 +225,7 @@ verifyChecklist <- function (Checklist)
    {
      h <- new_handle()
      handle_setheaders(h,
-                      "X-eBirdApiToken" = "5efhcrnce7q0"
+                      "X-eBirdApiToken" = "Your Token"
      )  
      print(Checklist)
      req <- curl_fetch_memory(paste("https://ebird.org/ws2.0/product/checklist/view/", Checklist, sep =''),h)
