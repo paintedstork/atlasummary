@@ -4,7 +4,7 @@ library (dplyr)
 library (reshape2)
 library (jsonlite)
 library (curl)
-
+source("token.R")
 
 # Number of Species reported in atleast 5% of the subcells
 # This gives an indication of how widespread the species is
@@ -120,7 +120,7 @@ writeFiles <- function (fileindex, filename, DataSet)
 {
   cbind (as.data.frame(DataSet$Subcell), 
          as.data.frame(DataSet$Lists)) %>% 
-         write.csv2 (paste(filename,".csv", sep=''))
+    write.csv2 (paste(filename,".csv", sep=''))
 }
 
 
@@ -129,8 +129,8 @@ nwriteFiles <- function (fileindex, filename, DataSet)
   cbind (as.data.frame(DataSet$Subcell), 
          as.data.frame(DataSet$Lists),
          as.data.frame(rep(filename, length(DataSet$Lists)))) %>% 
-     write.table ("Kerala.csv", append=TRUE, col.names=FALSE)
-#     print(filename)
+    write.table ("Kerala.csv", append=TRUE, col.names=FALSE)
+  #     print(filename)
 }
 
 # Very useful function
@@ -221,21 +221,21 @@ districts <- c (
 #Checks if a list is a valid eBird list.
 verifyChecklist <- function (Checklist)
 {
-   if(Checklist != "SNA")
-   {
-     h <- new_handle()
-     handle_setheaders(h,
-                      "X-eBirdApiToken" = "Your Token"
-     )  
-     print(Checklist)
-     req <- curl_fetch_memory(paste("https://ebird.org/ws2.0/product/checklist/view/", Checklist, sep =''),h)
-     Sys.sleep(0.2)     
-     return (req$status_code)
-   }
-   else
-   {
-     return (200)
-   }
+  if(Checklist != "SNA")
+  {
+    h <- new_handle()
+    handle_setheaders(h,
+                      "X-eBirdApiToken" = myEBirdToken
+    )  
+    print(Checklist)
+    req <- curl_fetch_memory(paste("https://ebird.org/ws2.0/product/checklist/view/", Checklist, sep =''),h)
+    Sys.sleep(0.2)     
+    return (req$status_code)
+  }
+  else
+  {
+    return (200)
+  }
 }
 
 #Converts the response JSON to Dataframe
@@ -243,14 +243,14 @@ convertToDf <- function (parsed)
 {
   if ( length(parsed$obs) > 0)
   {
-        dat <- as.data.frame ( list (parsed$obs$speciesCode,parsed$obs$obsDt,parsed$obs$howManyAtleast) )
+    dat <- as.data.frame ( list (parsed$obs$speciesCode,parsed$obs$obsDt,parsed$obs$howManyAtleast) )
   } 
   else
   {
-        print(paste("Empty/Hidden list", parsed$subId))
-        dat <- as.data.frame ( list ("empty species", parsed$obsDt, 0))
+    print(paste("Empty/Hidden list", parsed$subId))
+    dat <- as.data.frame ( list ("empty species", parsed$obsDt, 0))
   }
-
+  
   colnames(dat)       <- c("Species", "Date", "Count")
   dat$subId           <- parsed$subId
   dat$protocolId      <- parsed$protocolId
@@ -272,19 +272,19 @@ readChecklist <- function (Checklist, filename)
     Sys.sleep(0.2)     
     h <- new_handle()
     handle_setheaders(h,
-                      "X-eBirdApiToken" = "Your Token"
+                      "X-eBirdApiToken" = myEBirdToken
     )  
-#    print(Checklist)
+    #    print(Checklist)
     req <- curl_fetch_memory(paste("https://ebird.org/ws2.0/product/checklist/view/", Checklist, sep =''),h)
     
     if(req$status_code == 200)
     {
       jsonlite::prettify(rawToChar(req$content)) %>% 
-         fromJSON(flatten=FALSE) %>%
-             convertToDf() %>%
-                write.table(paste(filename,"_Data.csv", sep =''), sep=";", 
-                            append = TRUE,
-                              col.names = FALSE)  
+        fromJSON(flatten=FALSE) %>%
+        convertToDf() %>%
+        write.table(paste(filename,"_Data.csv", sep =''), sep=";", 
+                    append = TRUE,
+                    col.names = FALSE)  
       return (req$status_code)
     }
     else
@@ -379,7 +379,7 @@ listBrokenLists <- function(filename, sep = ' ')
     colnames(atlaslists) <- c("No", "Subcell", "Lists", "District-Season")
     atlaslists    <- atlaslists[!(atlaslists$Lists=="SNA"),]
   }
-
+  
   atlaslists$status <- mapply (verifyChecklist, Checklist = atlaslists$Lists)
   write.table(atlaslists, paste(filename,"_Status.csv", sep =''), sep=";")  
 }
@@ -449,3 +449,12 @@ listBrokenLists(filename = "Kerala")
 captureListsOnline(filename = "Ernakulam-Dry Season", sep= ';')
 transformListsData(filename="Ernakulam-Dry Season", sep= ';')
 
+
+captureListData <- function (file)
+{
+  print(file)
+  captureListsOnline(filename = file, sep= ';')
+  transformListsData(filename= file, sep= ';')
+}
+
+mapply (captureListData, file = files)
